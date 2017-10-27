@@ -1,0 +1,27 @@
+{
+  "name": "byteball-cli",
+  "description": "Byteball command line interface",
+  "author": "Mobby",
+  "version": "0.0.1",
+  "main": "start.js",
+  "keywords": [],
+  "license": "MIT",
+  "repository": {
+    "url": "git://github.com/MobbyCode/byteball-cli.git",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/MobbyCode/byteball-cli/issues"
+  },
+  "browser": {
+    "request": "browser-request",
+    "secp256k1": "secp256k1/js"
+  },
+  "dependencies": {
+    "byteballcore": "https://github.com/MobbyCode/byteballcore.git#test",
+    "bitcore-lib": "^0.13.14",
+    "bitcore-mnemonic": "~1.0.0",
+    "fs-extra": "^4.0.2",
+    "secp256k1": "^3.1.0"
+  }
+}

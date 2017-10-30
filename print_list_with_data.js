@@ -38,10 +38,21 @@ eventBus.on('database_is_synced', function () {
         backConsoleLogging();
         console.log('');
         db.query(
-            "SELECT unit, payload FROM messages WHERE app='data'",
+            "SELECT unit_authors.address, units.creation_date, messages.payload " +
+            "FROM units JOIN messages USING(unit) " +
+            "JOIN unit_authors USING(unit) " +
+            "WHERE messages.app='data' ",
             function (rows) {
                 rows.forEach(function (row) {
-                    console.log('unit:' + row.unit + ' tag:' + row.payload);
+                    // var data = {
+                    //     "content": "xxx",
+                    //     "tags": [t1,t2,t3],
+                    //     "creation_date" : {timestamp: new Date().getTime(), datetimeUTCString: new Date().toUTCString()}
+                    // };
+                    var payload = JSON.parse(row.payload);
+                    console.log((payload.creation_date ? payload.creation_date.datetimeUTCString : "undefined") + ': ' + payload.tags + '\n'
+                        + 'by: ' + row.address + '\n'
+                        + JSON.stringify(payload.content) + '\n');
                 });
                 process.exit();
             });

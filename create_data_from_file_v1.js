@@ -2,8 +2,8 @@
 "use strict";
 
 var args = process.argv.slice(2);
-if (args && args.length < 3) {
-    throw Error("3 arguments expected: 1-keysFile, 2-dataFile, 3-listTags");
+if (args && args.length < 2) {
+    throw Error("2 arguments expected: 1-keysFile, 2-dataFile");
 }
 
 var eventBus = require('byteballcore/event_bus.js');
@@ -19,9 +19,7 @@ var ecdsa = require('secp256k1');
 var fs = require('fs-extra');
 var desktop = require('byteballcore/desktop_app.js');
 
-if (!process.env.ENV_PASSPHRASE) {
-    process.env.ENV_PASSPHRASE = "";
-}
+process.env.ENV_PASSPHRASE = "";
 
 var signer = {
     readSigningPaths: function (conn, address, handleLengthsBySigningPaths) {
@@ -122,18 +120,7 @@ eventBus.on('database_is_synced', function () {
                 }
             });
 
-            var tags = [];
-            var splitted = args[2].split(",");
-            splitted.forEach(function(item) {
-                tags.push(item);
-            });
-
-            var dt = new Date();
-            var data = {
-                "content": require(args[1]),
-                "tags": tags, //"[" + (tags ? tags.substring(0, tags.length - 1) : "")+ "]",
-                "creation_date" : {timestamp: dt.getTime(), datetimeUTCString: dt.toUTCString()}
-            };
+            var data = require(args[1]);
             composer.composeDataJoint(address, data, signer, callbacks);
         });
     }

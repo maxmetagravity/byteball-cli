@@ -19,30 +19,42 @@ var ecdsa = require('secp256k1');
 var fs = require('fs-extra');
 var desktop = require('byteballcore/desktop_app.js');
 
+// to enable enter password - comment next
 if (!process.env.ENV_PASSPHRASE) {
     process.env.ENV_PASSPHRASE = "";
 }
 
 var signer = {
+    xPrivKey: null,
     readSigningPaths: function (conn, address, handleLengthsBySigningPaths) {
         handleLengthsBySigningPaths({r: constants.SIG_LENGTH});
     },
     readDefinition: function (conn, address, handleDefinition) {
-        conn.query("SELECT definition FROM my_addresses WHERE address=?", [address], function (rows) {
-            if (rows.length !== 1)
-                throw "definition not found";
-            handleDefinition(null, JSON.parse(rows[0].definition));
-        });
+        var localAddress = this.address();
+        if (address && localAddress && address === localAddress) {
+            handleDefinition(null, this.definition());
+        } else {
+            throw "address '" + address + "' is wrong";
+        }
     },
     sign: function (objUnsignedUnit, assocPrivatePayloads, address, signing_path, handleSignature) {
         var buf_to_sign = objectHash.getUnitHashToSign(objUnsignedUnit);
-        var path = "m/44'/0'/0'/0/0";
-        var privateKey = xPrivKey.derive(path).privateKey;
-        var privKeyBuf = privateKey.bn.toBuffer({size: 32}); // https://github.com/bitpay/bitcore-lib/issues/47
-        handleSignature(null, ecdsaSig.sign(buf_to_sign, privKeyBuf));
+        handleSignature(null, ecdsaSig.sign(buf_to_sign, this.privateKeyBuffer()));
+    },
+    privateKeyBuffer: function() {
+        var privateKey = this.xPrivKey.derive("m/44'/0'/0'/0/0").privateKey;
+        return privateKey.bn.toBuffer({size: 32}); // https://github.com/bitpay/bitcore-lib/issues/47
+    },
+    publicKey: function() {
+        return ecdsa.publicKeyCreate(this.privateKeyBuffer(), true).toString('base64');
+    },
+    definition: function() {
+        return ["sig", {pubkey: this.publicKey()}];
+    },
+    address: function() {
+        return objectHash.getChash160(this.definition());
     }
 };
-
 
 function replaceConsoleLog() {
     var APP_DATA_DIR = desktop.getAppDataDir();
@@ -89,18 +101,11 @@ function readKeys(onDone) {
     });
 }
 
-var xPrivKey;
-
 eventBus.on('database_is_synced', function () {
 
         readKeys(function (mnemonic_phrase, passphrase) {
-            var mnemonic = new Mnemonic(mnemonic_phrase);
-            xPrivKey = mnemonic.toHDPrivateKey(passphrase);
 
-            var privateKey = xPrivKey.derive("m/44'/0'/0'/0/0").privateKey;
-            var privKeyBuf = privateKey.bn.toBuffer({size: 32}); // https://github.com/bitpay/bitcore-lib/issues/47
-            var pubKey = ecdsa.publicKeyCreate(privKeyBuf, true).toString('base64');
-            var address = objectHash.getChash160(["sig", {pubkey: pubKey}]);
+            signer.xPrivKey = new Mnemonic(mnemonic_phrase).toHDPrivateKey(passphrase);
 
             var composer = require('byteballcore/composer.js');
 
@@ -134,7 +139,7 @@ eventBus.on('database_is_synced', function () {
                 "tags": tags, //"[" + (tags ? tags.substring(0, tags.length - 1) : "")+ "]",
                 "creation_date" : {timestamp: dt.getTime(), datetimeUTCString: dt.toUTCString()}
             };
-            composer.composeDataJoint(address, data, signer, callbacks);
+            composer.composeDataJoint(signer.address(), data, signer, callbacks);
         });
     }
 );
